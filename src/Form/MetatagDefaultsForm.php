@@ -7,6 +7,7 @@
 
 namespace Drupal\metatag\Form;
 
+use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\metatag\Entity\MetatagTag;
@@ -113,22 +114,26 @@ class MetatagDefaultsForm extends EntityForm {
    */
   protected function getAvailableBundles() {
     $options = array();
-    // @TODO discover supported entities.
-    $entity_types = array(
-      'node' => 'Node',
-      'taxonomy_term' => 'Taxonomy term',
-    );
+    $entity_types = [];
     $entity_manager = \Drupal::service('entity.manager');
+    foreach ($entity_manager->getDefinitions() as $entity_name => $definition) {
+      if ($definition instanceof ContentEntityType) {
+        $entity_types[$entity_name] = $definition->getLabel()->render();
+      }
+    }
     foreach ($entity_types as $entity_type => $entity_label) {
+      $metatag_defaults_id = $entity_type;
+      if (empty(entity_load('metatag_defaults', $metatag_defaults_id))) {
+        $options[$entity_label][$metatag_defaults_id] = $entity_label;
+      }
       $bundles = $entity_manager->getBundleInfo($entity_type);
       foreach ($bundles as $bundle_id => $bundle_metadata) {
         $metatag_defaults_id = $entity_type . '__' . $bundle_id;
         if (empty(entity_load('metatag_defaults', $metatag_defaults_id))) {
-          $options[$entity_label][$metatag_defaults_id] = $bundle_metadata['label'];
+          $options[$entity_label][$metatag_defaults_id] = $entity_label . ':' . $bundle_metadata['label'];
         }
       }
     }
     return $options;
   }
-
 }
